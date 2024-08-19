@@ -1,84 +1,77 @@
 package com.example.moneywastetracking
 
 import android.app.Service
+import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
-import android.graphics.PixelFormat
+import android.content.ServiceConnection
+import android.os.Binder
 import android.os.IBinder
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
-import java.util.Timer
-import java.util.TimerTask
-import kotlinx.coroutines.*
 
 class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
     private lateinit var overlayView: View
-    private lateinit var moneyWastedText: TextView
-    private var hourlyRate: Float = 0f
-    private var startTime: Long = 0
-    private val timer = Timer()
+    private lateinit var timerService: TimerService
+    private var isBound = false
 
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as TimerService.TimerBinder
+            timerService = binder.getService()
+            isBound = true
+            updateOverlay()
+        }
+
+        override fun onServiceDisconnected(arg0: ComponentName) {
+            isBound = false
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
+        bindService(Intent(this, TimerService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
-    }
+        overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_layout, null)
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        hourlyRate = intent?.getFloatExtra("HOURLY_RATE", 0f) ?: 0f
-        showOverlay()
-        startTime = System.currentTimeMillis()
-        startUpdatingMoneyWasted()
-        return START_STICKY
-    }
-
-    private fun showOverlay() {
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            PixelFormat.TRANSLUCENT
-        ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = 0
-            y = 100
-        }
+            android.graphics.PixelFormat.TRANSLUCENT
+        )
+        params.gravity = Gravity.TOP or Gravity.RIGHT
 
-        overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_layout, null)
-        moneyWastedText = overlayView.findViewById(R.id.moneyWastedText)
         windowManager.addView(overlayView, params)
-    }
 
-    private fun startUpdatingMoneyWasted() {
-        CoroutineScope(Dispatchers.Default).launch {
-            while (true) {
-                val elapsedTimeHours = (System.currentTimeMillis() - startTime) / 3600000f
-                val moneyWasted = elapsedTimeHours * hourlyRate
-                withContext(Dispatchers.Main) {
-                    updateMoneyWastedText(moneyWasted)
-                }
-                delay(300000) // Wait for 5 minutes (300000 ms)
-            }
+        overlayView.setOnClickListener {
+            val intent = Intent(this, MainActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            startActivity(intent)
         }
     }
 
-    private fun updateMoneyWastedText(moneyWasted: Float) {
-        moneyWastedText.post {
-            moneyWastedText.text = String.format("$%.2f wasted", moneyWasted)
-        }
+    private fun updateOverlay() {
+        val moneyTextView = overlayView.findViewById<TextView>(R.id.overlayText)
+        moneyTextView.text = "$${timerService.getMoneyWasted()}"
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        timer.cancel()
+        if (isBound) {
+            unbindService(serviceConnection)
+            isBound = false
+        }
         windowManager.removeView(overlayView)
+    }
+
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 }

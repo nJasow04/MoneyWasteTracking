@@ -33,6 +33,7 @@
         <!-- Service declaration -->
         <service
             android:name=".OverlayService"
+            android:permission="android.permission.SYSTEM_ALERT_WINDOW"
             android:enabled="true"
             android:exported="false" />
     </application>

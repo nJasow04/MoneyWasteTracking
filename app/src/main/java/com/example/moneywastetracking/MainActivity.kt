@@ -30,6 +30,34 @@ import androidx.compose.ui.platform.LocalFocusManager
 
 import java.math.BigDecimal
 import java.math.RoundingMode
+
+
+
+import android.content.ComponentName
+import android.content.Context
+import android.content.ServiceConnection
+import android.os.IBinder
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
+import com.example.moneywastetracking.ui.theme.MoneyWasteTrackingTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+
+
+
+
+
+
 // TODO
 /*
     Hourly Rate Input:
@@ -56,17 +84,16 @@ class MainActivity : ComponentActivity() {
     private var seconds by mutableStateOf(0)
     private var moneywasted by mutableStateOf(0f)
     private var job: Job? = null
+    private var isPaused by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         setContent {
             MoneyWasteTrackingTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     MainContent(
                         modifier = Modifier.padding(innerPadding),
-                        onStartOverlayService = {
-                            startTimer()
-                        },
                         onHourlyRateChange = { rate ->
                             hourlyRate = rate
                         },
@@ -80,7 +107,24 @@ class MainActivity : ComponentActivity() {
                             moneywasted = 0f
                             job?.cancel()
                         },
+                        onPauseOrResume = {
+                            if (isPaused) {
+                                startTimer() // Resume the timer
+                                isPaused = false
+                            } else {
+                                job?.cancel() // Pause the timer
+                                job = null
+                                isPaused = true
+                            }
+                        },
+                        isPaused = isPaused,
                         moneywasted = moneywasted,
+                        onStartOverlayService = {
+                            startTimer()
+
+//                            startService(Intent(this, OverlayService::class.java))
+//                            finish() // Close the main page
+                        }
                     )
                 }
             }
@@ -101,8 +145,21 @@ class MainActivity : ComponentActivity() {
                         hours++
                     }
                 }
-                moneywasted = BigDecimal(hourlyRate * (hours + minutes / 60.0 + seconds / 3600.0).toDouble()).setScale(3, RoundingMode.HALF_UP).toFloat()
+                moneywasted =
+                    BigDecimal(hourlyRate * (hours + minutes / 60.0 + seconds / 3600.0).toDouble()).setScale(
+                        3,
+                        RoundingMode.HALF_UP
+                    ).toFloat()
+                updateMoneyWastedInPreferences()
             }
+        }
+    }
+
+    private fun updateMoneyWastedInPreferences() {
+        val sharedPreferences = getSharedPreferences("MoneyPrefs", MODE_PRIVATE)
+        with(sharedPreferences.edit()) {
+            putFloat("moneywasted", moneywasted)
+            apply()
         }
     }
 }
@@ -110,16 +167,17 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainContent(
     modifier: Modifier = Modifier,
-    onStartOverlayService: () -> Unit,
     onHourlyRateChange: (Float) -> Unit,
     hours: Int,
     minutes: Int,
     seconds: Int,
     onResetCurrent: () -> Unit,
+    onPauseOrResume: () -> Unit,
+    isPaused: Boolean,
     moneywasted: Float,
+    onStartOverlayService: () -> Unit // Add this parameter back
 ) {
     var hourlyRateInput by remember { mutableStateOf("") }
-    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
 
     Column(modifier = modifier.padding(16.dp)) {
@@ -146,18 +204,23 @@ fun MainContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
-            onClick = onStartOverlayService,
+            onClick = onStartOverlayService, // Use the lambda passed to MainContent
             modifier = Modifier.fillMaxWidth()
         ) {
             Text(text = "Start Overlay Service")
         }
-        Text(text = "Time Wasted: $hours hr $minutes min $seconds s")
         Text(text = "Current Hourly Rate: $$hourlyRateInput per hour")
+        Text(text = "Time Wasted: $hours hr $minutes min $seconds s")
         Text(text = "Money Wasted in Current Session: $${moneywasted}")
 
         Spacer(modifier = Modifier.height(16.dp))
 
-//        Text(text = "Time Wasted in Current Session: $time hours")
+        Button(
+            onClick = onPauseOrResume, // Use the onPauseOrResume function
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(text = if (isPaused) "Resume" else "Pause") // Toggle button text based on isPaused
+        }
 
         Button(
             onClick = onResetCurrent,
@@ -168,18 +231,22 @@ fun MainContent(
     }
 }
 
+
 @Preview(showBackground = true)
 @Composable
 fun MainContentPreview() {
     MoneyWasteTrackingTheme {
         MainContent(
             onStartOverlayService = {},
-            onHourlyRateChange = {},
+            onResetCurrent = {},
             hours = 0,
             minutes = 0,
             seconds = 0,
-            onResetCurrent = {},
             moneywasted = 0f,
+            onHourlyRateChange = {},
+            isPaused = false,
+            onPauseOrResume = {},
         )
     }
 }
+
