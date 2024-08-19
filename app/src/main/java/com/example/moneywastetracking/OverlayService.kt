@@ -17,25 +17,10 @@ class OverlayService : Service() {
 
     private lateinit var windowManager: WindowManager
     private lateinit var overlayView: View
-    private lateinit var timerService: TimerService
-    private var isBound = false
-
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(className: ComponentName, service: IBinder) {
-            val binder = service as TimerService.TimerBinder
-            timerService = binder.getService()
-            isBound = true
-            updateOverlay()
-        }
-
-        override fun onServiceDisconnected(arg0: ComponentName) {
-            isBound = false
-        }
-    }
 
     override fun onCreate() {
         super.onCreate()
-        bindService(Intent(this, TimerService::class.java), serviceConnection, Context.BIND_AUTO_CREATE)
+
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_layout, null)
 
@@ -57,17 +42,19 @@ class OverlayService : Service() {
         }
     }
 
-    private fun updateOverlay() {
+    private fun updateOverlay(moneyWasted: Float) {
         val moneyTextView = overlayView.findViewById<TextView>(R.id.overlayText)
-        moneyTextView.text = "$${timerService.getMoneyWasted()}"
+        moneyTextView.text = "$${moneyWasted}"
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        val moneyWasted = intent?.getFloatExtra("moneywasted", 0f) ?: 0f
+        updateOverlay(moneyWasted) // Update overlay with the moneywasted value
+        return START_STICKY
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        if (isBound) {
-            unbindService(serviceConnection)
-            isBound = false
-        }
         windowManager.removeView(overlayView)
     }
 

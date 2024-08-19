@@ -52,6 +52,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
+
 
 
 
@@ -78,6 +82,11 @@ import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
+
+    companion object {
+        private const val OVERLAY_PERMISSION_REQUEST_CODE = 1234  // You can use any unique integer value
+    }
+
     private var hourlyRate by mutableStateOf(0f)
     private var hours by mutableStateOf(0)
     private var minutes by mutableStateOf(0)
@@ -122,7 +131,10 @@ class MainActivity : ComponentActivity() {
                         onStartOverlayService = {
                             startTimer()
 
-//                            startService(Intent(this, OverlayService::class.java))
+                            checkOverlayPermission()
+                            val intent = Intent(this, OverlayService::class.java)
+                            intent.putExtra("moneywasted", moneywasted) // Pass the moneywasted value
+                            startService(intent)
 //                            finish() // Close the main page
                         }
                     )
@@ -162,6 +174,43 @@ class MainActivity : ComponentActivity() {
             apply()
         }
     }
+
+    private fun checkOverlayPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                requestOverlayPermission()
+            } else {
+                startOverlayService()
+            }
+        } else {
+            startOverlayService()
+        }
+    }
+
+    private fun requestOverlayPermission() {
+        val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName"))
+        startActivityForResult(intent, OVERLAY_PERMISSION_REQUEST_CODE)
+    }
+
+    private fun startOverlayService() {
+        val intent = Intent(this, OverlayService::class.java)
+        intent.putExtra("moneywasted", 10.5f)  // Or whatever value you want to pass
+        startService(intent)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == OVERLAY_PERMISSION_REQUEST_CODE) {
+            if (Settings.canDrawOverlays(this)) {
+                startOverlayService()
+            } else {
+                // Permission denied, handle accordingly (maybe show a message to the user)
+            }
+        }
+    }
+
+
 }
 
 @Composable
