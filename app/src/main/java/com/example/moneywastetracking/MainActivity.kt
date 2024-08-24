@@ -114,6 +114,10 @@ class MainActivity : ComponentActivity() {
                             minutes = 0
                             seconds = 0
                             moneywasted = 0f
+
+                            // Stop the OverlayService
+                            val stopIntent = Intent(this, OverlayService::class.java)
+                            stopService(stopIntent)
                             job?.cancel()
                         },
                         onPauseOrResume = {

@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shape xmlns:android="http://schemas.android.com/apk/res/android">
-    <solid android:color="#F3C677" /> <!-- Circle color -->
+    <solid android:color="#C52233" /> <!-- Circle color -->
     <size android:width="80dp" android:height="80dp" />
     <corners android:radius="40dp" /> <!-- Radius should be half of width/height -->
+<!--    <padding android:bottom="3dp"-->
+<!--        android:top="3dp"-->
+<!--        android:left="3dp"-->
+<!--        android:right="3dp"-->
+<!--        />-->
 </shape>
