@@ -16,9 +16,10 @@ import android.view.MotionEvent
 import android.graphics.Point
 import android.animation.ValueAnimator
 import android.view.animation.DecelerateInterpolator
-import kotlin.math.abs
+import kotlin.math.absoluteValue
 
 import android.content.res.Resources
+import android.util.Log
 
 
 class OverlayService : Service() {
@@ -71,23 +72,41 @@ class OverlayService : Service() {
                         return true
                     }
                     MotionEvent.ACTION_MOVE -> {
-                        layoutParams.x = initialX + (event.rawX - initialTouchX).toInt()
-                        layoutParams.y = initialY + (event.rawY - initialTouchY).toInt()
-                        windowManager.updateViewLayout(overlayView, layoutParams)
-                        return true
+                        val deltaX = event.rawX - initialTouchX
+                        val deltaY = event.rawY - initialTouchY
+
+                        if (deltaX.absoluteValue > 10 || deltaY.absoluteValue > 10) {
+                            // If movement is significant, consider it a drag
+                            layoutParams.x = initialX + deltaX.toInt()
+                            layoutParams.y = initialY + deltaY.toInt()
+                            windowManager.updateViewLayout(overlayView, layoutParams)
+                            return true
+                        }
                     }
                     MotionEvent.ACTION_UP -> {
-                        snapToClosestCorner()
+                        val deltaX = event.rawX - initialTouchX
+                        val deltaY = event.rawY - initialTouchY
+
+                        if (deltaX.absoluteValue < 10 && deltaY.absoluteValue < 10) {
+                            // Consider this a click if movement is minimal
+                            overlayView.performClick()
+                        } else {
+                            // Movement was significant, snap to closest corner
+                            snapToClosestCorner()
+                        }
                         return true
                     }
                 }
                 return false
             }
+
         })
 
         overlayView.setOnClickListener {
+            Log.d("OverlayService", "Entering setOnClickListener")
             val intent = Intent(this, MainActivity::class.java)
-            intent.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            Log.d("OverlayService", "Starting Activity")
             startActivity(intent)
         }
     }
