@@ -20,10 +20,13 @@ and then a small draggable OverlayService that stays at the front of your screen
 
 <img width="346" alt="Screenshot 2024-08-26 at 1 54 59 AM" src="https://github.com/user-attachments/assets/c020efed-df41-4cfc-9fa7-44a41345fb28">
 
+## Potential improvements
+Although the essentials of this app have been completed, there remain a few things that I might want to add that would entice more users to use it, and perhaps, make 
+the user experience, overall, more pleasant
+1. Animate the disappearance and appearance of buttons - as of right now, buttons in the app are appearing and disappearing during the transition between different states of the app, giving the app an overall choppy feeling. In the future, I might animate this a little bit to make everything a bit softer on the eyes
+2. I would probably add a stats page too - the home page feels empty and would be better filled with statistics like how much money you wasted in the past week, month, year, etc
 
 ## What I learned
 Over the process of making this product, I got a quick crash course on Kotlin, how to create applications that are based on time, how to create Overlay Service applications, and how
 to make different views of the app (specifically the main page where all of the variables were stored and the overlay service) talk to each other. Overall, it was a nice and
 quick development experience and I hope it looks decently professional
-
-## Potential improvements
