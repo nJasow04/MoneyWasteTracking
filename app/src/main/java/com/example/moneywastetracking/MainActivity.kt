@@ -1,5 +1,6 @@
 package com.example.moneywastetracking
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -39,7 +40,10 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
-
+import android.view.inputmethod.InputMethodManager
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 
 
 /*
@@ -67,6 +71,8 @@ class MainActivity : ComponentActivity() {
     private var moneywasted by mutableStateOf(0f)
     private var job: Job? = null
     private var isPaused by mutableStateOf(false)
+    private var isOverlayServiceStarted by mutableStateOf(false) // Track if overlay is started
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -92,6 +98,8 @@ class MainActivity : ComponentActivity() {
                             val stopIntent = Intent(this, OverlayService::class.java)
                             stopService(stopIntent)
                             job?.cancel()
+                            isOverlayServiceStarted = false // Reset the flag when reset is pressed
+                            isPaused = false
                         },
                         onPauseOrResume = {
                             if (isPaused) {
@@ -129,7 +137,9 @@ class MainActivity : ComponentActivity() {
                             intent.putExtra("initial_moneywasted", 0f) // Initialize initial_moneywasted to 0
                             startService(intent)
 //                            finish() // Close the main page if needed
-                        }
+                            isOverlayServiceStarted = true // Set flag to true when overlay service starts
+                        },
+                        isOverlayServiceStarted = isOverlayServiceStarted // Pass the state to MainContent
                     )
                 }
             }
@@ -210,7 +220,9 @@ fun MainContent(
     onPauseOrResume: () -> Unit,
     isPaused: Boolean,
     moneywasted: Float,
-    onStartOverlayService: () -> Unit // Add this parameter back
+    onStartOverlayService: () -> Unit, // Add this parameter back
+
+    isOverlayServiceStarted: Boolean // New parameter to control button visibility
 ) {
     var hourlyRateInput by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
@@ -218,6 +230,7 @@ fun MainContent(
     Column(modifier = modifier.padding(16.dp)) {
         Text(text = "Money Waste Tracker", style = MaterialTheme.typography.headlineMedium)
         Spacer(modifier = Modifier.height(16.dp))
+
 
         OutlinedTextField(
             value = hourlyRateInput,
@@ -232,36 +245,53 @@ fun MainContent(
                 }
             },
             label = { Text("Hourly Rate $/hr") },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number,
+                imeAction = ImeAction.Done // Set the Enter key action to Done
+            ),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    focusManager.clearFocus() // Hide the keyboard
+                    onResetCurrent() // Reset everything
+                    onStartOverlayService() // Start the overlay service
+                }
+            ),
             modifier = Modifier.fillMaxWidth()
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = onStartOverlayService, // Use the lambda passed to MainContent
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Start Overlay Service")
-        }
+
         Text(text = "Current Hourly Rate: $$hourlyRateInput per hour")
         Text(text = "Time Wasted: $hours hr $minutes min $seconds s")
         Text(text = "Money Wasted in Current Session: $${moneywasted}")
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Button(
-            onClick = onPauseOrResume, // Use the onPauseOrResume function
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = if (isPaused) "Resume" else "Pause") // Toggle button text based on isPaused
-        }
+        if (isOverlayServiceStarted) {
+            Button(
+                onClick = onPauseOrResume, // Use the onPauseOrResume function
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = if (isPaused) "Resume" else "Pause") // Toggle button text based on isPaused
+            }
 
-        Button(
-            onClick = onResetCurrent,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(text = "Stop and Reset Current Session")
+            Button(
+                onClick = onResetCurrent,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Stop and Reset Current Session")
+            }
+        } else {
+            Button(
+                onClick = {
+                    onStartOverlayService()
+                    focusManager.clearFocus() // Hide the keyboard
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = "Start Overlay Service")
+            }
         }
     }
 }
@@ -281,6 +311,7 @@ fun MainContentPreview() {
             onHourlyRateChange = {},
             isPaused = false,
             onPauseOrResume = {},
+            isOverlayServiceStarted = false
         )
     }
 }
