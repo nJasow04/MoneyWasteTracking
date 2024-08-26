@@ -31,53 +31,26 @@ import androidx.compose.ui.platform.LocalFocusManager
 import java.math.BigDecimal
 import java.math.RoundingMode
 
-
-
-import android.content.ComponentName
-import android.content.Context
-import android.content.ServiceConnection
-import android.os.IBinder
-import androidx.activity.compose.setContent
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.Button
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
-import com.example.moneywastetracking.ui.theme.MoneyWasteTrackingTheme
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+
 
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 
 
 
-
-
-
-
-// TODO
 /*
+    Next Steps:
     Hourly Rate Input:
-    - Pressing Enter should automatically save the input, not go to new line
-    - Needs to be a reset button that returns the hourly rate to an input-able state,
-        and sets hourly rate back to 0
-    - The reset button will be the same as the start overlay service button after the start
-        button has been clicked.
+    - Pressing Enter should automatically save the input, not go to new line. It should also reset
+    everything back to zero too.
 
     - Total page:
         - Total time wasted, Today, past week, past month, past 3 months, past 6 months, past year
         - Total money wasted ---------------------
-    - Changing your hourly rate doesn't necessarily reset the counter, you will have the option to
-        change your rate without reseting the counter by default, and resetting the counter
-        to zero if you want.
-    - Total Money Wasted has to be an accumulation of all sessions and different hourly rates.
  */
 
 
@@ -122,12 +95,27 @@ class MainActivity : ComponentActivity() {
                         },
                         onPauseOrResume = {
                             if (isPaused) {
+//                                startTimer() // Resume the timer
+//                                isPaused = false
                                 startTimer() // Resume the timer
+                                checkOverlayPermission()
+                                val intent = Intent(this, OverlayService::class.java)
+                                intent.putExtra("hourlyRate", hourlyRate) // Pass the hourlyRate value
+                                Log.d("MainActivity", "moneywasted: $moneywasted")
+                                intent.putExtra("initial_moneywasted", moneywasted) // Pass the current money wasted value
+                                startService(intent)
                                 isPaused = false
                             } else {
                                 job?.cancel() // Pause the timer
                                 job = null
                                 isPaused = true
+
+                                // Stop the OverlayService when paused
+                                val stopIntent = Intent(this, OverlayService::class.java)
+                                stopService(stopIntent)
+//                                job?.cancel() // Pause the timer
+//                                job = null
+//                                isPaused = true
                             }
                         },
                         isPaused = isPaused,
@@ -137,9 +125,10 @@ class MainActivity : ComponentActivity() {
 
                             checkOverlayPermission()
                             val intent = Intent(this, OverlayService::class.java)
-                            intent.putExtra("moneywasted", moneywasted) // Pass the moneywasted value
+                            intent.putExtra("hourlyRate", hourlyRate) // Pass the hourlyRate value
+                            intent.putExtra("initial_moneywasted", 0f) // Initialize initial_moneywasted to 0
                             startService(intent)
-//                            finish() // Close the main page
+//                            finish() // Close the main page if needed
                         }
                     )
                 }
@@ -166,18 +155,11 @@ class MainActivity : ComponentActivity() {
                         3,
                         RoundingMode.HALF_UP
                     ).toFloat()
-                updateMoneyWastedInPreferences()
+
             }
         }
     }
 
-    private fun updateMoneyWastedInPreferences() {
-        val sharedPreferences = getSharedPreferences("MoneyPrefs", MODE_PRIVATE)
-        with(sharedPreferences.edit()) {
-            putFloat("moneywasted", moneywasted)
-            apply()
-        }
-    }
 
     private fun checkOverlayPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -199,7 +181,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startOverlayService() {
         val intent = Intent(this, OverlayService::class.java)
-        intent.putExtra("moneywasted", 10.5f)  // Or whatever value you want to pass
+        intent.putExtra("hourlyRate", hourlyRate)  // Pass the hourlyRate to OverlayService
         startService(intent)
     }
 

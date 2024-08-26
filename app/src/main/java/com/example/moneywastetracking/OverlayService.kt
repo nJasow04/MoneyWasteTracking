@@ -1,11 +1,7 @@
 package com.example.moneywastetracking
 
 import android.app.Service
-import android.content.ComponentName
-import android.content.Context
 import android.content.Intent
-import android.content.ServiceConnection
-import android.os.Binder
 import android.os.IBinder
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -13,10 +9,17 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import android.view.MotionEvent
-import android.graphics.Point
 import android.animation.ValueAnimator
-import android.view.animation.DecelerateInterpolator
 import kotlin.math.absoluteValue
+
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CoroutineScope
+
+import java.math.BigDecimal
+import java.math.RoundingMode
 
 import android.content.res.Resources
 import android.util.Log
@@ -30,6 +33,16 @@ class OverlayService : Service() {
 
     // For padding around the circle
     private val margin = 5
+
+    // Timer-related variables
+    private var hourlyRate: Float = 0f
+    private var hours: Int = 0
+    private var minutes: Int = 0
+    private var seconds: Int = 0
+    private var moneywasted: Float = 0f
+    private var job: Job? = null
+
+    private var initialMoneyWasted: Float = 0f // Declare initialMoneyWasted
 
     override fun onCreate() {
         super.onCreate()
@@ -109,6 +122,36 @@ class OverlayService : Service() {
             Log.d("OverlayService", "Starting Activity")
             startActivity(intent)
         }
+
+        startTimer()
+
+    }
+
+    private fun startTimer() {
+        job?.cancel()
+        job = CoroutineScope(Dispatchers.Main).launch {
+            while (true) {
+                delay(1000) // 1 second in milliseconds
+                seconds++
+                if (seconds == 60) {
+                    seconds = 0
+                    minutes++
+                    if (minutes == 60) {
+                        minutes = 0
+                        hours++
+                    }
+                }
+//                moneywasted = BigDecimal(hourlyRate * (hours + minutes / 60.0 + seconds / 3600.0).toDouble())
+//                    .setScale(1, RoundingMode.HALF_UP).toFloat()
+
+                moneywasted = BigDecimal(
+                    initialMoneyWasted + hourlyRate * (hours + minutes / 60.0 + seconds / 3600.0).toDouble()
+                ).setScale(1, RoundingMode.HALF_UP).toFloat()
+
+                // Update overlay UI with new money wasted value
+                updateOverlay(moneywasted)
+            }
+        }
     }
 
     private fun snapToClosestCorner() {
@@ -155,20 +198,30 @@ class OverlayService : Service() {
         animatorY.start()
     }
 
+
     private fun updateOverlay(moneyWasted: Float) {
         val moneyTextView = overlayView.findViewById<TextView>(R.id.overlayText)
-        moneyTextView.text = "$${moneyWasted}"
+        if (moneyTextView != null) {
+            Log.d("OverlayService", "Updating overlay text with: $moneyWasted") // Log before updating the UI
+            moneyTextView.text = "$$moneyWasted"
+        } else {
+            Log.e("OverlayService", "TextView not found in overlay layout")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val moneyWasted = intent?.getFloatExtra("moneywasted", 0f) ?: 0f
-        updateOverlay(moneyWasted) // Update overlay with the moneywasted value
+        hourlyRate = intent?.getFloatExtra("hourlyRate", 0f) ?: 0f
+        initialMoneyWasted = intent?.getFloatExtra("initial_moneywasted", 0f) ?: 0f
+        moneywasted = initialMoneyWasted // Initialize with the passed value
         return START_STICKY
     }
+
 
     override fun onDestroy() {
         super.onDestroy()
         windowManager.removeView(overlayView)
+
+        job?.cancel() // Stops the timer
     }
 
     override fun onBind(intent: Intent?): IBinder? {

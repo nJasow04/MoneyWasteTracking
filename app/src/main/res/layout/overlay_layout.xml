@@ -13,6 +13,6 @@
         android:background="@drawable/circle_background"
         android:gravity="center"
         android:textColor="@android:color/white"
-        android:textSize="21sp"
+        android:textSize="14sp"
         />
 </RelativeLayout>
