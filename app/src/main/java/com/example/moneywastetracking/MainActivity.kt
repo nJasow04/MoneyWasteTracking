@@ -206,6 +206,11 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        val stopIntent = Intent(this, OverlayService::class.java)
+        stopService(stopIntent) // Stop the overlay service when MainActivity is destroyed
+    }
 
 }
 
