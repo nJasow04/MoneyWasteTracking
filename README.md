@@ -14,9 +14,11 @@ and then a small draggable OverlayService that stays at the front of your screen
 
 <img width="351" alt="Screenshot 2024-08-26 at 1 52 53 AM" src="https://github.com/user-attachments/assets/a4761974-7fa2-4582-8f5f-9b6a9e232e7f">
 
+<img width="346" alt="Screenshot 2024-08-26 at 1 54 35 AM" src="https://github.com/user-attachments/assets/03f55b09-ec0f-4538-8e22-10015f43154c">
+
 <img width="345" alt="Screenshot 2024-08-26 at 1 53 30 AM" src="https://github.com/user-attachments/assets/f53a9efd-7d30-425f-aa93-d8315fd69dcb">
 
-<img width="346" alt="Screenshot 2024-08-26 at 1 54 35 AM" src="https://github.com/user-attachments/assets/03f55b09-ec0f-4538-8e22-10015f43154c">
+<img width="345" alt="Screenshot 2024-08-26 at 2 03 37 AM" src="https://github.com/user-attachments/assets/d0f6b405-36e9-4c53-a67a-495d37e3fdbf">
 
 <img width="346" alt="Screenshot 2024-08-26 at 1 54 59 AM" src="https://github.com/user-attachments/assets/c020efed-df41-4cfc-9fa7-44a41345fb28">
 
